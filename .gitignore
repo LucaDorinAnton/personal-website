@@ -278,3 +278,18 @@ sketch
 
 # End of https://www.gitignore.io/api/node,react,flask,python
 
+# User defined
+
+
+# Secrets
+secrets/
+
+# Mongo DB 
+
+mongodata/
+
+# VS Code
+
+.vscode/
+
+

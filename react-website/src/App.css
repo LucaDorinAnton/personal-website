@@ -1,0 +1,27 @@
+body {
+    font-family: 'Merriweather', serif;
+    height: 100vh;
+}
+
+.heading {
+    font-weight: 700;
+  }
+
+.subheading {
+    font-weight: 400;
+  }
+
+  .header-background {
+    background: url("./img/space.jpg");
+    background-size: 100%;
+    opacity: 0.8;
+    max-width: 100%;
+  }
+
+  .header-box {
+    color: #ffffff;
+    font-size: 120px;
+    text-align: center;
+    background-clip: text;
+    -webkit-background-clip: text;
+  }

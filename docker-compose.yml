@@ -1,0 +1,45 @@
+version: '3.7'
+
+services:
+
+  react-website:
+    container_name: react-website
+    build:
+      context: ./react-website
+      dockerfile: Dockerfile
+    volumes:
+      - './react-website/:/app'
+      - '/app/node_modules'
+    ports:
+      - "3001:3000"
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    tty: true
+
+  flask-api:
+    container_name: flask-api
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+
+  mongo:
+    image: mongo
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD_FILE: '/run/secrets/mongosecret' 
+    volumes:
+      - './secrets/:/run/secrets/'
+      - './mongodata/:/data/db/'
+  
+  mongo-express:
+    image: mongo-express
+    restart: always
+    ports:
+    - "8081:8081"
+    environment: 
+      ME_CONFIG_MONGODB_ADMINUSERNAME: root
+      ME_CONFIG_MONGODB_ADMINPASSWORD: somesecret
+
