@@ -11,13 +11,17 @@ h = ha.hexdigest()
 
 base = 'http://localhost:5000'
 
+s = r.Session()
+
 def generate_sha(p_sha, salt, date, ip):
     h = hashlib.sha256()
     inp = p_sha + salt + date + ip
     h.update(inp.encode('utf-8'))
     return h.hexdigest()
 
-r_check = r.get(base + '/blogLoginInfo')
+print(s.get(base + '/heartbeat').status_code)
+
+r_check = s.get(base + '/blogLoginInfo')
 
 salt = json.loads(r_check.text)['salt']
 
@@ -25,9 +29,17 @@ now = str(dt.datetime.now().date())
 
 sha  = generate_sha(h, salt, now, ip)
 
-r_login = r.post(base + '/blogLogin', json={
+r_login = s.post(base + '/blogLogin', json={
     'sha256' : sha
 })
 print(salt, now, ip)
 print(r_login.text)
 print('Cookies: {}'.format(r_login.cookies['UID']))
+
+new_cookies = {
+    'UID' : r_login.cookies['UID']
+}
+
+test_login = s.get(base + '/heartbeat', cookies=new_cookies)
+print(test_login.status_code, test_login.text)
+

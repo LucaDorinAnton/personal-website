@@ -6,7 +6,7 @@ import random
 from flask import Flask, request, jsonify, abort, make_response
 
 from mongo_session import Mongo
-
+from functools import wraps
 
 app = Flask(__name__)
 
@@ -15,6 +15,30 @@ app = Flask(__name__)
 SECRETS_READER_ACC = "secrets_reader"
 SECRETS_WRITER_ACC = "secrets_writer"
 ######################
+
+def loggged_in(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'UID' not in request.cookies.keys():
+            app.logger.info('ERROR --- NO UID COOKIE PRESENT')
+            app.logger.info(str(request.cookies))
+            abort(400)
+        cl = Mongo()
+        s_sesh = cl.getByQuery(SECRETS_READER_ACC, 'sessions', {'scope' : 'blog'})[0]
+        r_sid, r_sig = request.cookies.get('UID').split('-')
+        s_sid = s_sesh['sid']
+        s_sig = s_sesh['sig']
+        if r_sid != s_sid:
+            app.logger.info('ERROR --- SIDs DON\'T MATCH')
+            abort(400)
+        if r_sig != s_sig:
+            app.logger.info('ERROR --- SIGNATURES DON\'T MATCH')
+            abort(400)
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+
 
 # Return info necessary to build sha256 digest of writer password
 # Specifically, return a random 16 character salt
@@ -36,7 +60,6 @@ def blogLoginInfo():
 
     res = {'salt' : salt}
     return jsonify(res), 200
-
 
 
 
@@ -79,6 +102,13 @@ def blogLogin():
     response.set_cookie(c_id, value=c_val, expires=expire_at, path='/', secure=True, httponly=True)
 
     return response, 200
+
+
+@app.route('/heartbeat', methods=['GET'])
+@loggged_in
+def heartbeat():
+    return jsonify({'status' : 'ok'}), 200
+
 
 
 def generate_sid():
