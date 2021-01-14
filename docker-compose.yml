@@ -21,6 +21,8 @@ services:
     build:
       context: ./api
       dockerfile: Dockerfile
+    volumes:
+      - './api/source:/api'
     ports:
       - "5000:5000"
 

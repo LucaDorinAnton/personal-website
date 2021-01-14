@@ -19,7 +19,8 @@ class Mongo:
     client = None
     
     def createClient(self, account):
-        self.client =  MongoClient(mongo_urls[account][0])
+        if self.client is None: 
+            self.client =  MongoClient(mongo_urls[account][0])
 
     def killClient(self):
         if self.client != None:
@@ -46,27 +47,33 @@ class Mongo:
             db == self.getDB(account, db)
         return db[col]
 
-    def getAll(self, account, col, db='DEFAULT'):
+    def getByQuery(self, account, col, query, db='DEFAULT'):
         c = self.getCol(account, col, db)
-        res = []
-        for i in c.find({}):
-            res.append(i)
+        res = c.find(query)
         self.killClient()
         return res
+
+    def getAll(self, account, col, db='DEFAULT'):
+        return self.getByQuery(account, col, {}, db)
 
     def getFirst(self, account, col, db='DEFAULT'):
+        return self.getAll(account, col, db)[0]
+
+
+    def updateFirst(self, account, col, update, db='DEFAULT'):
+        obj = self.getFirst(account, col, db)
+        query = obj_to_id(obj)
+        return self.updatebyQuery(account, col, query, update, db)[0]
+
+    def updatebyQuery(self, account, col, query, update, db='DEFAULT'):
         c = self.getCol(account, col, db)
-        res = c.find({})[0]
+        c.update_one(query, {'$set': update})
+        res = self.getByQuery(account, col, query, db)
         self.killClient()
         return res
 
-    def updateFirst(self, account, col, update, db='DEFAULT'):
-        c = self.getCol(account, col, db)
-        res = self.getFirst(account, col, db)
-        keys = update.keys()
-        for key in keys:
-            res[key] = update[key]
-        c.update({}, res)
-        res = self.getFirst(account, col, db)
-        self.killClient()
-        return res
+
+def obj_to_id(obj):
+    return  {
+                '_id' : obj['_id']
+            }
