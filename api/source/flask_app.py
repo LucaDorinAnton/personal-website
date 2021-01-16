@@ -4,17 +4,13 @@ import datetime as dt
 import random
 
 from flask import Flask, request, jsonify, abort, make_response
-
+from settings_mngr import SECRETS_READER_ACC, SECRETS_WRITER_ACC
 from mongo_session import Mongo
+
 from functools import wraps
 
 app = Flask(__name__)
 
-######################
-# HARDCODING (for now)
-SECRETS_READER_ACC = "secrets_reader"
-SECRETS_WRITER_ACC = "secrets_writer"
-######################
 
 def loggged_in(f):
     @wraps(f)

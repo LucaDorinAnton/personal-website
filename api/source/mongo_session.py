@@ -1,14 +1,14 @@
 from pymongo import MongoClient
-
+from settings_mngr import SECRETS_READER_ACC, SECRETS_READER_PWD, SECRETS_WRITER_ACC, SECRETS_WRITER_PWD, SECRETS_DB, MONGO_HOST
 ######################
-# HARDCODING (for now)
+
 mongo_urls = {
-    'secrets_reader' : [
-        'mongodb://secretsReader:somesecret4@personal-website_mongo_1/secrets',
-        'secrets'],
-    'secrets_writer' : [
-        'mongodb://secretsWriter:somesecret5@personal-website_mongo_1/secrets',
-        'secrets'
+    SECRETS_READER_ACC : [
+        'mongodb://{}:{}@{}/{}'.format(SECRETS_READER_ACC,SECRETS_READER_PWD, MONGO_HOST, SECRETS_DB),
+        SECRETS_DB],
+    SECRETS_WRITER_ACC : [
+        'mongodb://{}:{}@{}/{}'.format(SECRETS_WRITER_ACC, SECRETS_WRITER_PWD, MONGO_HOST, SECRETS_DB),
+        SECRETS_DB
     ]
 }
 
