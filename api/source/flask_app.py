@@ -2,22 +2,32 @@ import hmac
 import hashlib
 import datetime as dt
 import random
-
 from flask import Flask, request, jsonify, abort, make_response
+from functools import wraps
+
 from settings_mngr import SECRETS_READER_ACC, SECRETS_WRITER_ACC
 from mongo_session import Mongo
-
-from functools import wraps
+from log_mngr import mongo_log
 
 app = Flask(__name__)
 
+LOGIN_REQUEST_TIMEOUT = 3
+
+WARNING_NO_COOKIE = 'Resource access denied - No UID cookie detected'
+WARNING_SID_MISMATCH = 'Resource access denied- SID mismatch '
+WARNING_SIG_MISMATCH = 'Resource access denied - Signature could not be verified'
+
+WARNING_REQUEST_TIMEOUT = 'Login attempt failed - Login request came after information time-out'
+WARNING_SHA_MISMATCH = 'Login attempt failed - Client provided incorrect SHA'
+
+INFO_LOGIN_SUCCESS = 'Client logged in successfully'
 
 def loggged_in(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'UID' not in request.cookies.keys():
-            app.logger.info('ERROR --- NO UID COOKIE PRESENT')
-            app.logger.info(str(request.cookies))
+            app.logger.warning(WARNING_NO_COOKIE)
+            mongo_log(WARNING_NO_COOKIE, 'WARNING', 'blog')
             abort(400)
         cl = Mongo()
         s_sesh = cl.getByQuery(SECRETS_READER_ACC, 'sessions', {'scope' : 'blog'})[0]
@@ -25,10 +35,12 @@ def loggged_in(f):
         s_sid = s_sesh['sid']
         s_sig = s_sesh['sig']
         if r_sid != s_sid:
-            app.logger.info('ERROR --- SIDs DON\'T MATCH')
+            app.logger.warning(WARNING_SID_MISMATCH)
+            mongo_log(WARNING_SID_MISMATCH, 'WARNING', 'blog')
             abort(400)
         if r_sig != s_sig:
-            app.logger.info('ERROR --- SIGNATURES DON\'T MATCH')
+            app.logger.warning(WARNING_SIG_MISMATCH)
+            mongo_log(WARNING_SIG_MISMATCH, 'WARNING', 'blog')
             abort(400)
         return f(*args, **kwargs)
     return decorated_function
@@ -67,8 +79,9 @@ def blogLogin():
     res_dt = dt.datetime.fromtimestamp(float(res['timestamp']))
     td = req_dt - res_dt
 
-    if td > dt.timedelta(seconds=3):
-        app.logger.info("ERROR --- REQUEST CAME AFTER MORE THAN 3 SECONDS")
+    if td > dt.timedelta(seconds=LOGIN_REQUEST_TIMEOUT):
+        app.logger.warning(WARNING_REQUEST_TIMEOUT)
+        mongo_log(WARNING_REQUEST_TIMEOUT, 'WARNING', 'blog')
         abort(400)
 
     res_date = str(res_dt.date())
@@ -77,9 +90,8 @@ def blogLogin():
     r_sha = body['sha256']
 
     if r_sha != s_sha:
-        app.logger.info("ERROR --- REQUEST PROVIDED WRONG SHA")
-        to_log = r_sha + " - " + s_sha + " - " + str(res)
-        app.logger.info(to_log)
+        app.logger.warning(WARNING_SHA_MISMATCH)
+        mongo_log(WARNING_SHA_MISMATCH, 'WARNING', 'blog')
         abort(400)
     
     sid, sig = generate_sid()
@@ -92,11 +104,12 @@ def blogLogin():
         'set_at': set_at,
         'expire_at': expire_at
     })
-    response = make_response("Logged In\nsid: {}\nsig: {}".format(sid, sig))
-    c_id="UID"
-    c_val = "{}-{}".format(sid, sig)
+    response = make_response('Logged In\nsid: {}\nsig: {}'.format(sid, sig))
+    c_id='UID'
+    c_val = '{}-{}'.format(sid, sig)
     response.set_cookie(c_id, value=c_val, expires=expire_at, path='/', secure=True, httponly=True)
-
+    app.logger.info(INFO_LOGIN_SUCCESS)
+    mongo_log(INFO_LOGIN_SUCCESS, 'WARNING', 'blog')
     return response, 200
 
 
@@ -128,12 +141,12 @@ def generate_sha(p_sha, salt, date, ip):
 
 def generate_salt(nums_only=False, len=16):
     chars = []
-    NUMS = "0123456789"
+    NUMS = '0123456789'
     if nums_only:
         ALPHABET = NUMS
     else:
-        ALPHABET = NUMS + "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        ALPHABET = NUMS + 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
     for i in range(len):
         chars.append(random.choice(ALPHABET))
-    return "".join(chars)
+    return ''.join(chars)
