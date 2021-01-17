@@ -13,5 +13,5 @@ def mongo_log(msg, level, scope):
         'timestamp' : dt.datetime.now().timestamp(),
         'message' : msg
     }
-    return m.insert_one(accs[scope], LOGGING_COL, doc)
+    return m.insertOne(accs[scope], LOGGING_COL, doc)
 

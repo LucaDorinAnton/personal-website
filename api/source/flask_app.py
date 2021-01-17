@@ -22,7 +22,16 @@ WARNING_SHA_MISMATCH = 'Login attempt failed - Client provided incorrect SHA'
 
 INFO_LOGIN_SUCCESS = 'Client logged in successfully'
 
+
+
 def loggged_in(f):
+    '''
+    Resource Decorator. 
+    Check if the request has a valid SID and accompanying signature.
+    If not, report the event and return an HTTP 400 response.
+    Else, execute the request.
+    '''
+
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'UID' not in request.cookies.keys():
@@ -47,15 +56,17 @@ def loggged_in(f):
 
 
 
-
-# Return info necessary to build sha256 digest of writer password
-# Specifically, return a random 16 character salt
-# A request to this  resource will also update the db with
-# the new salt, as well as the current date, the ip of the requester
-# and the time of the request. This information will be later used to
-# when the requester subsequently tries to log in. 
 @app.route('/blogLoginInfo', methods=['GET'])
 def blogLoginInfo():
+    '''
+    Return info necessary to build sha256 digest of writer password
+    Specifically, return a random 16 character salt
+    A request to this  resource will also update the db with
+    the new salt, as well as the current date, the ip of the requester
+    and the time of the request. This information will be later used to
+    when the requester subsequently tries to log in.
+    '''
+
     cl = Mongo()
     salt = generate_salt()
     now = dt.datetime.now()
@@ -73,6 +84,17 @@ def blogLoginInfo():
 
 @app.route('/blogLogin', methods=['POST'])
 def blogLogin():
+    '''
+    Compare the sha256 value provided by the client
+    with a sha256 generated from the values stored in the database.
+    Description of the sha256 generation can be found in the generate_sha
+    function. If there is a match, generate a new SID/SIG pair, store them
+    in the database and provide them to the client as a cookie.
+    Else, the event is logged and a HTTP 400 response is raised.
+    A request to this resource also has to come within a given time inteval
+    to a corresponding request to the /blogLoginInfo resource.
+    '''
+
     req_dt = dt.datetime.now()
     cl = Mongo()
     res = cl.getFirst(SECRETS_READER_ACC, 'blog_writer')
@@ -98,7 +120,7 @@ def blogLogin():
     cl = Mongo()
     set_at = dt.datetime.now().timestamp()
     expire_at = (dt.datetime.now() + dt.timedelta(days=7)).timestamp()
-    cl.updatebyQuery(SECRETS_WRITER_ACC, 'sessions', {'scope' : 'blog'}, {
+    cl.updateByQuery(SECRETS_WRITER_ACC, 'sessions', {'scope' : 'blog'}, {
         'sid' : sid,
         'sig' : sig,
         'set_at': set_at,
@@ -116,11 +138,20 @@ def blogLogin():
 @app.route('/heartbeat', methods=['GET'])
 @loggged_in
 def heartbeat():
+    '''
+    Return a standard JSON response. 
+    Used to test if the client is logged in.
+    '''
+    
     return jsonify({'status' : 'ok'}), 200
 
 
 
 def generate_sid():
+    '''
+    Generate a new random session ID and matching signature.
+    '''
+
     sid = generate_salt(nums_only=True)
     cl = Mongo()
     key = cl.getByQuery(SECRETS_WRITER_ACC, 'keys', {'scope' : 'blog'})[0]['key']
@@ -133,6 +164,15 @@ def generate_sid():
 
 
 def generate_sha(p_sha, salt, date, ip):
+    '''
+    Take a sha256 of a concatenation of four strings. 
+    The strings should be:
+        - p_sha - the sha256 of the password
+        - salt - a random string of 16 alfanumeric characters
+        - date - the UNIX timestamp of the date of the request
+        - ip - the public IP of the client
+        '''
+    
     h = hashlib.sha256()
     inp = p_sha + salt + date + ip
     h.update(inp.encode('utf-8'))
@@ -140,6 +180,10 @@ def generate_sha(p_sha, salt, date, ip):
 
 
 def generate_salt(nums_only=False, len=16):
+    '''
+    Generate random strings of numeric or alfanumeric characters of various lengths.
+    '''
+
     chars = []
     NUMS = '0123456789'
     if nums_only:
