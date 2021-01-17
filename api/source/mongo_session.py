@@ -106,8 +106,8 @@ class Mongo:
         '''
         Public method. Returns the first element retrieved after running
         a query on a column of a database as a certain account.
+        Raises an IndexError if the query returns empty.
         '''
-
         return self.getByQuery(account, col, query, db)[0]
 
 
@@ -198,13 +198,62 @@ class Mongo:
 
     def inserMany(self, account, col, docs, db='DEFAULT'):
         '''
-        Public Method. Inserts a list of documents into a collection
+        Public method. Inserts a list of documents into a collection
         from a database as an account. The documents may or may not
         contain an _id field.
         Returns True
         '''
         c = self.getCol(account, col, db)
         c.insert_many(docs)
+        self.killClient()
+        return True
+
+
+    def deleteAll(self, account, col, db='DEFAULT'):
+        '''
+        Public method. Deletes all documents from a collection
+        from a database as an account. Returns True.
+        '''
+        c = self.getCol(account, col, db)
+        c.delte_many({})
+        self.killClient()
+        return True
+
+
+    def deleteFirst(self, account, col, db='DEFAULT'):
+        '''
+        Public method. Selects the first document from a collection
+        from a a database as an account and deletes it. Returns True
+        '''
+
+        doc = self.getFirst(account, col, db)
+        c =  self.getCol(account, col, db)
+        c.delete_one(obj_to_id(doc))
+        self.killClient()
+        return True
+
+
+    def deleteOneByQuery(self, account, col, query, db='DEFAULT'):
+        '''
+        Public method. Deletes a document from a collection from
+        a database as an account based on a query. Returns True.
+        '''
+
+        c = self.getCol(account, col, db)
+        c.delete_one(query)
+        self.killClient()
+        return True
+
+    
+    def deleteManyByQuery(self, account, col, query, db='DEFAULT'):
+        '''
+        Public method. Deletes all document from a collection from
+        a database as an account which are selected by a query. 
+        Returns True.
+        '''
+
+        c = self.getCol(account, col, db)
+        c.delete_many(query)
         self.killClient()
         return True
 

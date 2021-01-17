@@ -3,7 +3,7 @@ import hashlib
 import datetime as dt
 import json
 
-ip = '172.23.0.1'
+ip = '172.19.0.1'
 inp = input("Pwd? > ")
 ha = hashlib.sha256()
 ha.update(inp.encode('utf-8'))
@@ -29,8 +29,11 @@ now = str(dt.datetime.now().date())
 
 sha  = generate_sha(h, salt, now, ip)
 
+s.get(base + '/blogLoginInfo')
+
 r_login = s.post(base + '/blogLogin', json={
-    'sha256' : sha
+    'sha256' : sha,
+    'salt' : salt
 })
 print(salt, now, ip)
 print(r_login.text)

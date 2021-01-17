@@ -19,6 +19,7 @@ WARNING_SIG_MISMATCH = 'Resource access denied - Signature could not be verified
 
 WARNING_REQUEST_TIMEOUT = 'Login attempt failed - Login request came after information time-out'
 WARNING_SHA_MISMATCH = 'Login attempt failed - Client provided incorrect SHA'
+WARNING_NO_INFO_REQUEST = 'Login attempt failed - No corresponding call to blogLoginInfo'
 
 INFO_LOGIN_SUCCESS = 'Client logged in successfully'
 
@@ -71,7 +72,7 @@ def blogLoginInfo():
     salt = generate_salt()
     now = dt.datetime.now()
     ts = now.timestamp()
-    cl.updateFirst(SECRETS_WRITER_ACC, 'blog_writer', {
+    cl.insertOne(SECRETS_WRITER_ACC, 'blog_sessions', {
         'salt' : salt,
         'timestamp' : str(ts),
         'ip' : request.remote_addr
@@ -87,6 +88,8 @@ def blogLogin():
     '''
     Compare the sha256 value provided by the client
     with a sha256 generated from the values stored in the database.
+    This resources uses the salt provided by the client to identify the request
+    in the database.
     Description of the sha256 generation can be found in the generate_sha
     function. If there is a match, generate a new SID/SIG pair, store them
     in the database and provide them to the client as a cookie.
@@ -94,10 +97,27 @@ def blogLogin():
     A request to this resource also has to come within a given time inteval
     to a corresponding request to the /blogLoginInfo resource.
     '''
+    body = request.get_json()
+    r_sha = body['sha256']
+    r_salt = body['salt']
 
     req_dt = dt.datetime.now()
     cl = Mongo()
-    res = cl.getFirst(SECRETS_READER_ACC, 'blog_writer')
+
+    try:
+        res = cl.getOneByQuery(SECRETS_READER_ACC, 'blog_sessions', {
+            'salt' : r_salt
+        })
+    except IndexError:
+        app.logger.warning(WARNING_NO_INFO_REQUEST)
+        mongo_log(WARNING_NO_INFO_REQUEST, 'WARNING', 'blog')
+        abort(400)
+    
+    # Request has been retrieved from db, so we can safely delete it now. 
+    cl.deleteOneByQuery(SECRETS_WRITER_ACC, 'blog_sessions', {
+        '_id' : res['_id']
+    })
+
     res_dt = dt.datetime.fromtimestamp(float(res['timestamp']))
     td = req_dt - res_dt
 
@@ -107,9 +127,8 @@ def blogLogin():
         abort(400)
 
     res_date = str(res_dt.date())
-    s_sha = generate_sha(res['sha256'], res['salt'], res_date, res['ip'])
-    body = request.get_json()
-    r_sha = body['sha256']
+    s_pwd_sha = cl.getFirst(SECRETS_READER_ACC, 'blog_pwd')['sha256']
+    s_sha = generate_sha(s_pwd_sha, res['salt'], res_date, res['ip'])
 
     if r_sha != s_sha:
         app.logger.warning(WARNING_SHA_MISMATCH)
