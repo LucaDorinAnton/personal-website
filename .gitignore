@@ -292,4 +292,6 @@ mongodata/
 
 .vscode/
 
+# KDE Plasma
+.directory
 

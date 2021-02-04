@@ -21,12 +21,15 @@ def generate_sha(p_sha, salt, date, ip):
 
 class TestLogin(unittest.TestCase):
 
-    ip = '172.18.0.1'
+    ip = None
     base = 'http://localhost:5000'
     s = r.Session()
 
     @classmethod
     def setUpClass(cls):
+        cls.s.get(cls.base + '/blogLoginInfo')
+        cls.ip = json.loads(cls.s.get(cls.base + '/request_ip').text)['ip']
+        print("Using IP: {}".format(cls.ip))
         inp = input("Pwd? > ")
         ha = hashlib.sha256()
         ha.update(inp.encode('utf-8'))

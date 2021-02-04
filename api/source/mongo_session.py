@@ -128,6 +128,16 @@ class Mongo:
 
         return self.getOneByQuery(account, col, {}, db)
 
+    def getLast(self, account, col, db='DEFAULT'):
+        '''
+        Public method. Returns the last object created
+        from a collection from a database as a certain account.
+        '''
+
+        c = self.getCol(account, col, db)
+        res = c.find().skip(c.count() - 1)[0]
+        self.killClient()
+        return res
 
     def updateOne(self, account, col, query, update, db='DEFAULT'):
         '''

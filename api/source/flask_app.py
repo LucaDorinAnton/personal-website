@@ -164,6 +164,19 @@ def heartbeat():
     
     return jsonify({'status' : 'ok'}), 200
 
+@app.route('/request_ip', methods=['GET'])
+def request_ip():
+    '''
+    Return a JSON object containing the ip of the
+    last client to fetch the /blogLoginInfo endpoint.
+    For testing purposes only.
+    '''
+    cl = Mongo()
+    r = cl.getLast(SECRETS_READER_ACC, 'blog_sessions')
+    return jsonify({
+        'ip' : r['ip']
+    }), 200
+
 
 
 def generate_sid():
